@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Ambientes virtuais
+.venv/
+venv/
+
+# Segredos
+.env
+
+# IDE / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Documentos locais e índices gerados
+data/source_documents/articles/*
+!data/source_documents/articles/.gitkeep
+data/source_documents/books/*
+!data/source_documents/books/.gitkeep
+data/indexes/*
+!data/indexes/.gitkeep
+
+# Downloads feitos pela aplicação
+downloads/*
+!downloads/.gitkeep
+
+# Evita publicação acidental de PDFs não autorizados
+*.pdf
