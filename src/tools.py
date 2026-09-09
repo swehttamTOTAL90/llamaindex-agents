@@ -51,7 +51,7 @@ def _extract_arxiv_id(link: str) -> str:
     if len(parts) < 2 or parts[0] not in {"abs", "pdf"}:
         raise ValueError("Use um link de artigo no formato arxiv.org/abs/... ou /pdf/...")
 
-    arxiv_id = parts[1].removesuffix(".pdf")
+    arxiv_id = "/".join(parts[1:]).removesuffix(".pdf")
     if not arxiv_id:
         raise ValueError("Não foi possível identificar o artigo no link informado.")
     return arxiv_id
