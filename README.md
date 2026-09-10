@@ -1,36 +1,76 @@
 # Sistema Multiagente para Pesquisa Científica
 
-Aplicação em Python voltada à pesquisa e consulta de artigos científicos utilizando **CrewAI**, **LlamaIndex**, **RAG** e modelos de linguagem.
+Aplicação em Python que combina **CrewAI**, **LlamaIndex**, **RAG** e ferramentas externas para pesquisar, filtrar e consultar conteúdo científico.
 
-O projeto combina agentes especializados para buscar artigos no arXiv, pesquisar documentos na web, validar resultados e consultar bases documentais indexadas.
+O projeto foi refatorado para separar interface, agentes, ferramentas e camada de recuperação documental, aproximando a estrutura de uma aplicação Python de produção.
 
-## Principais funcionalidades
+![Interface da aplicação](assets/thumb.png)
 
-- Busca de artigos científicos no **arXiv**.
-- Pesquisa complementar na web com **Tavily**.
-- Coordenação de múltiplos agentes com **CrewAI**.
-- Processo hierárquico com agente gerente.
-- Recuperação de informações em bases documentais com **LlamaIndex**.
-- Arquitetura **RAG** para consultas sobre documentos indexados.
-- Embeddings com **Hugging Face**.
-- Integração com modelos de linguagem via **Groq** e **NVIDIA NIM**.
-- Interface interativa desenvolvida com **Gradio**.
+## O que o projeto faz
+
+- Pesquisa artigos científicos no **arXiv**.
+- Realiza pesquisa complementar na web com **Tavily**.
+- Coordena agentes especializados com **CrewAI** em fluxo sequencial.
+- Filtra resultados fora do tema e consolida uma resposta final em português.
+- Consulta bases documentais locais com **LlamaIndex** e arquitetura **RAG**.
+- Utiliza embeddings multilíngues do **Hugging Face**.
+- Integra modelos via **Groq** e **NVIDIA NIM**.
+- Disponibiliza uma interface interativa com **Gradio**.
 
 ## Arquitetura
 
-O sistema possui agentes com responsabilidades distintas:
+```text
+llamaindex-agents/
+├── app.py
+├── src/
+│   ├── __init__.py
+│   ├── agents.py
+│   ├── config.py
+│   ├── rag.py
+│   └── tools.py
+├── scripts/
+│   └── build_indexes.py
+├── data/
+│   ├── README.md
+│   ├── source_documents/
+│   │   ├── articles/
+│   │   └── books/
+│   └── indexes/
+├── downloads/
+├── assets/
+│   └── thumb.png
+├── .env.example
+├── .gitignore
+├── requirements.txt
+└── README.md
+```
 
-1. **Agente de pesquisa:** busca artigos relacionados ao tema informado utilizando o arXiv.
-2. **Agente de pesquisa web:** procura documentos científicos na web.
-3. **Agente de verificação:** valida os documentos encontrados.
-4. **Agente gerente:** coordena a execução da equipe de forma hierárquica.
+### Responsabilidades dos módulos
 
-Além da pesquisa de artigos, a aplicação disponibiliza um agente baseado em **ReAct** para consultar duas bases documentais persistidas utilizando mecanismos de busca semântica.
+- **`app.py`**: interface Gradio e tratamento das chamadas da aplicação.
+- **`src/agents.py`**: criação e execução dos agentes CrewAI.
+- **`src/tools.py`**: integração com arXiv, Tavily e download de artigos.
+- **`src/rag.py`**: carregamento dos índices e consultas com ReAct + LlamaIndex.
+- **`src/config.py`**: configuração centralizada, caminhos e variáveis de ambiente.
+- **`scripts/build_indexes.py`**: geração local dos índices vetoriais usados pelo RAG.
+
+## Agentes
+
+O fluxo de pesquisa utiliza três papéis em sequência:
+
+1. **Agente de pesquisa no arXiv** — transforma o tema em palavras-chave científicas em inglês e procura artigos relacionados.
+2. **Agente de pesquisa na web** — complementa a busca utilizando Tavily.
+3. **Agente de verificação** — remove resultados fora do tema, duplicados ou sem caráter acadêmico e consolida a resposta final.
+
+Os agentes possuem limite de iterações para reduzir loops de tool calling e evitar execuções excessivamente longas.
+
+A aba de consulta documental utiliza um **ReActAgent** para escolher entre ferramentas de consulta das bases indexadas.
 
 ## Tecnologias
 
 - Python
 - CrewAI
+- LiteLLM
 - LlamaIndex
 - RAG
 - Groq
@@ -40,57 +80,93 @@ Além da pesquisa de artigos, a aplicação disponibiliza um agente baseado em *
 - arXiv
 - Gradio
 
-## Estrutura do projeto
+## Instalação
 
-```text
-llamaindex-agents/
-├── README.md
-└── llamaindex-agentes-main/
-    ├── app/
-    │   ├── app.py
-    │   ├── artigo/
-    │   ├── livro/
-    │   └── requirements.txt
-    ├── dados/
-    └── thumb.png
-```
+> Recomenda-se **Python 3.11** para evitar incompatibilidades entre dependências do ecossistema de IA.
 
-## Como executar
-
-1. Clone o repositório.
-2. Entre na pasta da aplicação:
+Clone o repositório e entre na pasta:
 
 ```bash
-cd llamaindex-agentes-main/app
+git clone https://github.com/swehttamTOTAL90/llamaindex-agents.git
+cd llamaindex-agents
 ```
 
-3. Crie e ative um ambiente virtual.
-4. Instale as dependências:
+Crie um ambiente virtual:
+
+```bash
+python -m venv .venv
+```
+
+Ative o ambiente e instale as dependências:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-5. Configure as variáveis de ambiente utilizadas pela aplicação:
+## Variáveis de ambiente
+
+Copie `.env.example` para `.env` e adicione suas próprias chaves:
 
 ```env
-GROQ_API_KEY=sua_chave
-nvidia=sua_chave
-TAVILY=sua_chave
+GROQ_API_KEY=
+NVIDIA_API_KEY=
+TAVILY_API_KEY=
 ```
 
-> Observação: no código atual, a variável da Tavily é lida como `tavily`. Ajuste o nome no `.env` ou padronize a variável no código antes da execução.
+O arquivo `.env` é ignorado pelo Git e não deve ser versionado ou compartilhado.
 
-6. Execute:
+O modelo CrewAI padrão configurado atualmente é um endpoint NVIDIA NIM definido pela variável `CREWAI_MODEL`. Caso o provedor descontinue um modelo, basta atualizar essa variável no `.env`.
+
+## Preparando a base RAG
+
+Por segurança e organização, documentos locais e índices gerados não são armazenados no repositório.
+
+Adicione somente arquivos que você tenha permissão para utilizar em:
+
+```text
+data/source_documents/articles/
+data/source_documents/books/
+```
+
+Depois gere os índices:
+
+```bash
+python scripts/build_indexes.py
+```
+
+## Executando
 
 ```bash
 python app.py
 ```
 
-## Objetivo do projeto
+A interface Gradio será iniciada localmente e disponibilizará duas áreas:
 
-Este projeto foi desenvolvido para explorar o uso de **agentes de IA**, ferramentas externas e recuperação aumentada por geração em um fluxo de pesquisa científica, combinando busca, validação e consulta de conhecimento em uma única aplicação.
+- **Pesquisa de artigos**: executa a equipe multiagente.
+- **Consulta documental**: responde perguntas utilizando as bases RAG locais.
+
+A pesquisa de artigos pode ser testada mesmo sem PDFs locais. A consulta documental exige que os índices RAG tenham sido gerados previamente.
+
+## Melhorias realizadas na refatoração
+
+- Separação de responsabilidades em módulos.
+- Padronização das variáveis de ambiente.
+- Remoção de impressão de API keys no terminal.
+- Atualização do modelo padrão utilizado pelo CrewAI/NVIDIA NIM.
+- Inclusão explícita do LiteLLM nas dependências.
+- Fluxo multiagente sequencial para reduzir delegações e loops desnecessários.
+- Limite de iterações por agente.
+- Instruções mais rígidas para uso das ferramentas.
+- Consultas do arXiv orientadas a palavras-chave científicas em inglês.
+- Resumos do arXiv compactados para reduzir contexto e tempo de processamento.
+- Tratamento mais claro de erros de configuração e ausência de índices.
+- Separação entre documentos de origem e artefatos gerados.
+- `.gitignore` para evitar publicação acidental de chaves, PDFs e índices locais.
+
+## Objetivo
+
+O projeto foi desenvolvido para explorar **IA Generativa**, **sistemas multiagentes**, **tool use** e **Retrieval-Augmented Generation (RAG)** em um fluxo aplicado à pesquisa científica.
 
 ---
 
-Projeto desenvolvido para fins de estudo e portfólio em **Inteligência Artificial Generativa** e **Sistemas Multiagentes**.
+Projeto de estudo e portfólio em **Dados e Inteligência Artificial**.

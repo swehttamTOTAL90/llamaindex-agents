@@ -1,0 +1,12 @@
+arxiv
+crewai
+crewai-tools
+gradio
+litellm
+llama-index
+llama-index-embeddings-huggingface
+llama-index-llms-groq
+llama-index-readers-file
+llama-index-tools-tavily-research
+python-dotenv
+requests
