@@ -12,12 +12,25 @@ from llama_index.tools.tavily_research import TavilyToolSpec
 from .config import AppConfig, DOWNLOADS_DIR
 
 
-def search_arxiv(topic: str, max_results: int = 5) -> str:
-    """Pesquisa artigos relevantes no arXiv e retorna resultados formatados."""
+MAX_ARXIV_RESULTS = 5
+MAX_SUMMARY_CHARS = 700
+
+
+def _compact_text(text: str, limit: int = MAX_SUMMARY_CHARS) -> str:
+    """Normaliza espaços e limita textos longos para reduzir contexto dos agentes."""
+    compact = " ".join(text.split())
+    if len(compact) <= limit:
+        return compact
+    return compact[: limit - 3].rstrip() + "..."
+
+
+def search_arxiv(topic: str, max_results: int = MAX_ARXIV_RESULTS) -> str:
+    """Pesquisa artigos relevantes no arXiv e retorna resultados compactos."""
     topic = topic.strip()
     if not topic:
         return "Informe um tema para pesquisar no arXiv."
 
+    max_results = max(1, min(int(max_results), MAX_ARXIV_RESULTS))
     search = arxiv.Search(
         query=topic,
         max_results=max_results,
@@ -31,8 +44,9 @@ def search_arxiv(topic: str, max_results: int = 5) -> str:
             "\n".join(
                 [
                     f"Título: {item.title}",
-                    f"Resumo: {item.summary}",
+                    f"Resumo: {_compact_text(item.summary)}",
                     f"Categoria: {item.primary_category}",
+                    f"Publicado: {item.published.date().isoformat()}",
                     f"Link: {item.entry_id}",
                 ]
             )
@@ -87,7 +101,11 @@ def build_research_tools(config: AppConfig):
     arxiv_tool = FunctionTool.from_defaults(
         fn=search_arxiv,
         name="search_arxiv",
-        description="Busca artigos científicos relevantes no arXiv a partir de um tema.",
+        description=(
+            "Busca artigos científicos no arXiv. Use uma consulta curta em inglês, com palavras-"
+            "chave científicas específicas. Argumentos: topic (string) e max_results (inteiro, "
+            "máximo 5)."
+        ),
     )
     download_tool = FunctionTool.from_defaults(
         fn=download_arxiv_pdf,

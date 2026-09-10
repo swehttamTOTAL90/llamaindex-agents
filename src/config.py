@@ -18,7 +18,7 @@ class AppConfig:
     nvidia_api_key: str
     tavily_api_key: str
     groq_model: str = "llama-3.3-70b-versatile"
-    crewai_model: str = "nvidia_nim/meta/llama-3.3-70b-instruct"
+    crewai_model: str = "nvidia_nim/nvidia/nemotron-3.5-lightning-30b-a3b"
     embedding_model: str = "intfloat/multilingual-e5-large"
 
     @property
@@ -50,7 +50,7 @@ def load_config() -> AppConfig:
         tavily_api_key=_required_env("TAVILY_API_KEY"),
         groq_model=os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),
         crewai_model=os.getenv(
-            "CREWAI_MODEL", "nvidia_nim/meta/llama-3.3-70b-instruct"
+            "CREWAI_MODEL", "nvidia_nim/nvidia/nemotron-3.5-lightning-30b-a3b"
         ),
         embedding_model=os.getenv(
             "EMBEDDING_MODEL", "intfloat/multilingual-e5-large"

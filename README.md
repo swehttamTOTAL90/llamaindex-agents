@@ -1,6 +1,6 @@
 # Sistema Multiagente para Pesquisa Científica
 
-Aplicação em Python que combina **CrewAI**, **LlamaIndex**, **RAG** e ferramentas externas para pesquisar, validar e consultar conteúdo científico.
+Aplicação em Python que combina **CrewAI**, **LlamaIndex**, **RAG** e ferramentas externas para pesquisar, filtrar e consultar conteúdo científico.
 
 O projeto foi refatorado para separar interface, agentes, ferramentas e camada de recuperação documental, aproximando a estrutura de uma aplicação Python de produção.
 
@@ -10,8 +10,8 @@ O projeto foi refatorado para separar interface, agentes, ferramentas e camada d
 
 - Pesquisa artigos científicos no **arXiv**.
 - Realiza pesquisa complementar na web com **Tavily**.
-- Coordena agentes especializados com **CrewAI**.
-- Usa um agente gerente em fluxo hierárquico.
+- Coordena agentes especializados com **CrewAI** em fluxo sequencial.
+- Filtra resultados fora do tema e consolida uma resposta final em português.
 - Consulta bases documentais locais com **LlamaIndex** e arquitetura **RAG**.
 - Utiliza embeddings multilíngues do **Hugging Face**.
 - Integra modelos via **Groq** e **NVIDIA NIM**.
@@ -56,12 +56,13 @@ llamaindex-agents/
 
 ## Agentes
 
-O fluxo de pesquisa utiliza quatro papéis principais:
+O fluxo de pesquisa utiliza três papéis em sequência:
 
-1. **Agente de pesquisa no arXiv** — encontra artigos científicos relacionados ao tema.
-2. **Agente de pesquisa na web** — amplia a busca utilizando Tavily.
-3. **Agente de verificação** — filtra e valida os resultados encontrados.
-4. **Gerente da pesquisa** — coordena a equipe em um processo hierárquico.
+1. **Agente de pesquisa no arXiv** — transforma o tema em palavras-chave científicas em inglês e procura artigos relacionados.
+2. **Agente de pesquisa na web** — complementa a busca utilizando Tavily.
+3. **Agente de verificação** — remove resultados fora do tema, duplicados ou sem caráter acadêmico e consolida a resposta final.
+
+Os agentes possuem limite de iterações para reduzir loops de tool calling e evitar execuções excessivamente longas.
 
 A aba de consulta documental utiliza um **ReActAgent** para escolher entre ferramentas de consulta das bases indexadas.
 
@@ -69,6 +70,7 @@ A aba de consulta documental utiliza um **ReActAgent** para escolher entre ferra
 
 - Python
 - CrewAI
+- LiteLLM
 - LlamaIndex
 - RAG
 - Groq
@@ -79,6 +81,8 @@ A aba de consulta documental utiliza um **ReActAgent** para escolher entre ferra
 - Gradio
 
 ## Instalação
+
+> Recomenda-se **Python 3.11** para evitar incompatibilidades entre dependências do ecossistema de IA.
 
 Clone o repositório e entre na pasta:
 
@@ -109,7 +113,9 @@ NVIDIA_API_KEY=
 TAVILY_API_KEY=
 ```
 
-O arquivo `.env` é ignorado pelo Git e não deve ser versionado.
+O arquivo `.env` é ignorado pelo Git e não deve ser versionado ou compartilhado.
+
+O modelo CrewAI padrão configurado atualmente é um endpoint NVIDIA NIM definido pela variável `CREWAI_MODEL`. Caso o provedor descontinue um modelo, basta atualizar essa variável no `.env`.
 
 ## Preparando a base RAG
 
@@ -139,13 +145,20 @@ A interface Gradio será iniciada localmente e disponibilizará duas áreas:
 - **Pesquisa de artigos**: executa a equipe multiagente.
 - **Consulta documental**: responde perguntas utilizando as bases RAG locais.
 
+A pesquisa de artigos pode ser testada mesmo sem PDFs locais. A consulta documental exige que os índices RAG tenham sido gerados previamente.
+
 ## Melhorias realizadas na refatoração
 
 - Separação de responsabilidades em módulos.
 - Padronização das variáveis de ambiente.
 - Remoção de impressão de API keys no terminal.
-- Correção do nome do modelo Groq.
-- Remoção de imports duplicados.
+- Atualização do modelo padrão utilizado pelo CrewAI/NVIDIA NIM.
+- Inclusão explícita do LiteLLM nas dependências.
+- Fluxo multiagente sequencial para reduzir delegações e loops desnecessários.
+- Limite de iterações por agente.
+- Instruções mais rígidas para uso das ferramentas.
+- Consultas do arXiv orientadas a palavras-chave científicas em inglês.
+- Resumos do arXiv compactados para reduzir contexto e tempo de processamento.
 - Tratamento mais claro de erros de configuração e ausência de índices.
 - Separação entre documentos de origem e artefatos gerados.
 - `.gitignore` para evitar publicação acidental de chaves, PDFs e índices locais.

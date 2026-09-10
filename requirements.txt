@@ -2,6 +2,7 @@ arxiv
 crewai
 crewai-tools
 gradio
+litellm
 llama-index
 llama-index-embeddings-huggingface
 llama-index-llms-groq

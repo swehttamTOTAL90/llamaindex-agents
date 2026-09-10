@@ -6,8 +6,11 @@ from .config import AppConfig
 from .tools import build_research_tools
 
 
+MAX_AGENT_ITERATIONS = 4
+
+
 def run_scientific_research(topic: str, config: AppConfig) -> str:
-    """Executa a equipe de agentes para pesquisar e validar artigos científicos."""
+    """Executa uma equipe de agentes em fluxo sequencial para pesquisar e validar artigos."""
     topic = topic.strip()
     if not topic:
         return "Informe um tema para iniciar a pesquisa."
@@ -17,77 +20,89 @@ def run_scientific_research(topic: str, config: AppConfig) -> str:
 
     arxiv_agent = Agent(
         role="Agente de pesquisa no arXiv",
-        goal="Encontrar artigos científicos relevantes sobre o tema informado.",
+        goal="Encontrar artigos científicos realmente relacionados ao tema informado.",
         backstory=(
-            "Especialista em pesquisa científica que utiliza o arXiv para localizar "
-            "trabalhos acadêmicos e suas referências."
+            "Especialista em pesquisa acadêmica no arXiv. Antes de usar a ferramenta, "
+            "transforma o tema em uma consulta curta com palavras-chave científicas em inglês."
         ),
-        tools=[tools["arxiv"], tools["download"]],
+        tools=[tools["arxiv"]],
         llm=llm,
+        allow_delegation=False,
+        max_iter=MAX_AGENT_ITERATIONS,
+        verbose=True,
     )
 
     web_agent = Agent(
         role="Agente de pesquisa científica na web",
-        goal="Encontrar documentos científicos relevantes disponíveis na web.",
+        goal="Encontrar fontes acadêmicas complementares e relevantes para o tema.",
         backstory=(
-            "Pesquisador especializado em localizar fontes científicas e documentos "
-            "acadêmicos em mecanismos de busca."
+            "Pesquisador especializado em localizar artigos e fontes acadêmicas confiáveis "
+            "na web, usando consultas objetivas e evitando buscas desnecessárias."
         ),
         tools=tools["web"],
         llm=llm,
+        allow_delegation=False,
+        max_iter=MAX_AGENT_ITERATIONS,
+        verbose=True,
     )
 
     verification_agent = Agent(
         role="Agente de verificação",
-        goal="Validar se os resultados encontrados são realmente artigos científicos.",
+        goal="Consolidar e filtrar os resultados encontrados pelos pesquisadores.",
         backstory=(
-            "Revisor de fontes acadêmicas responsável por filtrar resultados e manter "
-            "somente documentos compatíveis com a pesquisa científica."
+            "Revisor acadêmico responsável por remover resultados fora do tema, duplicados "
+            "ou claramente não científicos e produzir uma resposta final objetiva."
         ),
-        tools=tools["web"],
         llm=llm,
+        allow_delegation=False,
+        max_iter=MAX_AGENT_ITERATIONS,
+        verbose=True,
     )
 
-    manager = Agent(
-        role="Gerente da pesquisa",
-        goal="Coordenar os agentes e consolidar os melhores resultados.",
-        backstory=(
-            "Gerente de pesquisa responsável por organizar a execução da equipe, "
-            "delegar atividades e garantir uma resposta final coerente."
+    arxiv_task = Task(
+        description=(
+            f"Pesquise no arXiv artigos científicos relevantes sobre: {topic}. "
+            "Antes de chamar a ferramenta, converta o tema para uma consulta curta em inglês, "
+            "com 3 a 8 palavras-chave científicas. Use a ferramenta search_arxiv no máximo uma "
+            "vez, passando somente os argumentos topic e max_results=5. Não coloque explicações "
+            "no nome da ação. Descarte resultados claramente fora do tema."
         ),
-        allow_delegation=True,
-        llm=llm,
+        expected_output=(
+            "Até 5 artigos relevantes do arXiv com título, link e uma frase explicando a relação "
+            "com o tema."
+        ),
+        agent=arxiv_agent,
     )
 
-    tasks = [
-        Task(
-            description=f"Busque no arXiv artigos científicos relevantes sobre: {topic}.",
-            expected_output="Até 5 artigos relevantes com título e link.",
-            agent=arxiv_agent,
+    web_task = Task(
+        description=(
+            f"Faça uma pesquisa complementar na web sobre: {topic}. Procure principalmente "
+            "artigos científicos, preprints, páginas de periódicos ou instituições acadêmicas. "
+            "Faça no máximo duas chamadas de busca e priorize relevância sobre quantidade."
         ),
-        Task(
-            description=f"Busque na web artigos científicos relevantes sobre: {topic}.",
-            expected_output="Até 5 artigos relevantes com título e link.",
-            agent=web_agent,
+        expected_output=(
+            "Até 5 fontes acadêmicas relevantes com título, link e uma frase de relevância."
         ),
-        Task(
-            description=(
-                "Verifique os documentos encontrados pela equipe e mantenha somente "
-                "resultados que sejam artigos ou fontes acadêmicas válidas."
-            ),
-            expected_output=(
-                "Lista consolidada de até 5 artigos científicos validados, com título, "
-                "link e uma breve justificativa de relevância."
-            ),
-            agent=verification_agent,
+        agent=web_agent,
+    )
+
+    verification_task = Task(
+        description=(
+            "Revise os resultados produzidos pelos dois pesquisadores. Use apenas o conteúdo "
+            "recebido das tarefas anteriores, sem realizar novas buscas. Remova itens fora do "
+            "tema, duplicados ou sem caráter acadêmico. Responda em português."
         ),
-    ]
+        expected_output=(
+            "Lista final de até 5 artigos ou fontes acadêmicas validadas, com título, origem, "
+            "link e uma breve justificativa de relevância."
+        ),
+        agent=verification_agent,
+    )
 
     crew = Crew(
         agents=[arxiv_agent, web_agent, verification_agent],
-        tasks=tasks,
-        manager_agent=manager,
-        process=Process.hierarchical,
+        tasks=[arxiv_task, web_task, verification_task],
+        process=Process.sequential,
         verbose=True,
     )
 
